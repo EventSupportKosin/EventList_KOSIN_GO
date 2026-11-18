@@ -1,0 +1,2226 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<base target="_top" />
+<title>บันทึกภาพ ออกร้าน & Workshop</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<style>
+  body { font-family: "Sarabun", "Noto Sans Thai", ui-sans-serif, system-ui, sans-serif; }
+
+  /* ป้าย "เสร็จสมบูรณ์แล้ว" — แสงวิ้งไล่พาดผ่านวนซ้ำ */
+  .pill-shine {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .pill-shine::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 45%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.85), transparent);
+    animation: pill-shine-sweep 2.2s ease-in-out infinite;
+  }
+  @keyframes pill-shine-sweep {
+    0% { left: -60%; }
+    100% { left: 130%; }
+  }
+
+  /* ป้าย "ถึงวันงานแล้ว" — กระพริบไซเรนส้ม/แดง พร้อมเรืองแสงเต้น */
+  .pill-siren {
+    animation: pill-siren-flash 1s ease-in-out infinite;
+  }
+  @keyframes pill-siren-flash {
+    0%, 100% {
+      background-color: #f97316;
+      box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.6);
+    }
+    50% {
+      background-color: #ef4444;
+      box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+    }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+const {
+  useState,
+  useEffect,
+  useRef,
+  useCallback
+} = React;
+function Icon({
+  children,
+  className,
+  ...props
+}) {
+  return React.createElement("svg", {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    className: className,
+    ...props
+  }, children);
+}
+const Camera = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
+}), React.createElement("circle", {
+  cx: "12",
+  cy: "13",
+  r: "3"
+}));
+const Plus = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "M5 12h14"
+}), React.createElement("path", {
+  d: "M12 5v14"
+}));
+const ArrowLeft = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "M19 12H5"
+}), React.createElement("path", {
+  d: "m12 19-7-7 7-7"
+}));
+const Trash2 = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "M3 6h18"
+}), React.createElement("path", {
+  d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+}), React.createElement("path", {
+  d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+}), React.createElement("line", {
+  x1: "10",
+  y1: "11",
+  x2: "10",
+  y2: "17"
+}), React.createElement("line", {
+  x1: "14",
+  y1: "11",
+  x2: "14",
+  y2: "17"
+}));
+const Loader2 = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "M21 12a9 9 0 1 1-6.219-8.56"
+}));
+const Package = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "m7.5 4.27 9 5.15"
+}), React.createElement("path", {
+  d: "M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+}), React.createElement("path", {
+  d: "M3.29 7 12 12l8.71-5"
+}), React.createElement("path", {
+  d: "M12 22V12"
+}));
+const Wrench = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"
+}));
+const RotateCcw = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "M3 12a9 9 0 1 0 2.64-6.36L3 8"
+}), React.createElement("path", {
+  d: "M3 3v5h5"
+}));
+const ImageOff = p => React.createElement(Icon, p, React.createElement("line", {
+  x1: "2",
+  y1: "2",
+  x2: "22",
+  y2: "22"
+}), React.createElement("path", {
+  d: "M10.41 10.41a2 2 0 1 1-2.83-2.83"
+}), React.createElement("path", {
+  d: "M21 15V6a2 2 0 0 0-2-2H9"
+}), React.createElement("path", {
+  d: "M3 3v18h18"
+}));
+const AlertCircle = p => React.createElement(Icon, p, React.createElement("circle", {
+  cx: "12",
+  cy: "12",
+  r: "10"
+}), React.createElement("line", {
+  x1: "12",
+  y1: "8",
+  x2: "12",
+  y2: "12"
+}), React.createElement("line", {
+  x1: "12",
+  y1: "16",
+  x2: "12.01",
+  y2: "16"
+}));
+const CheckCircle2 = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "M22 11.08V12a10 10 0 1 1-5.93-9.14"
+}), React.createElement("path", {
+  d: "m9 11 3 3L22 4"
+}));
+const MapPin = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"
+}), React.createElement("circle", {
+  cx: "12",
+  cy: "10",
+  r: "3"
+}));
+const User = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"
+}), React.createElement("circle", {
+  cx: "12",
+  cy: "7",
+  r: "4"
+}));
+const Timer = p => React.createElement(Icon, p, React.createElement("line", {
+  x1: "10",
+  y1: "2",
+  x2: "14",
+  y2: "2"
+}), React.createElement("line", {
+  x1: "12",
+  y1: "14",
+  x2: "15",
+  y2: "11"
+}), React.createElement("circle", {
+  cx: "12",
+  cy: "14",
+  r: "8"
+}));
+const Pencil = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"
+}), React.createElement("path", {
+  d: "m15 5 4 4"
+}));
+const ClipboardList = p => React.createElement(Icon, p, React.createElement("rect", {
+  x: "8",
+  y: "2",
+  width: "8",
+  height: "4",
+  rx: "1"
+}), React.createElement("path", {
+  d: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
+}), React.createElement("path", {
+  d: "M9 12h6"
+}), React.createElement("path", {
+  d: "M9 16h6"
+}), React.createElement("path", {
+  d: "M9 8h1"
+}));
+const History = p => React.createElement(Icon, p, React.createElement("path", {
+  d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+}), React.createElement("path", {
+  d: "M3 3v5h5"
+}), React.createElement("path", {
+  d: "M12 7v5l4 2"
+}));
+// URL ของ Google Apps Script Web App (สำหรับใช้งานผ่าน GitHub Pages)
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwkZDdwk9R1pZLX5PHlHeQdiPNID-eZ3WjU4iP5481PFeIeRGpixN3E6QRJhJlC04xOlQ/exec";
+
+async function gsRun(fnName, ...args) {
+  // ถ้าเปิดจากลิงก์ Apps Script โดยตรง ใช้ google.script.run ตามเดิม
+  if (typeof google !== "undefined" && google.script && google.script.run) {
+    return new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(res => {
+        resolve(res);
+      }).withFailureHandler(err => {
+        reject(new Error(err && err.message || String(err)));
+      })[fnName](...args);
+    });
+  }
+
+  // ถ้าเปิดจาก GitHub Pages ใช้ fetch ไปที่ Apps Script Web App
+  let res;
+  if (fnName === "apiList") {
+    res = await fetch(`${WEB_APP_URL}?action=list&_=${Date.now()}`, {
+      method: "GET",
+      redirect: "follow"
+    });
+  } else if (fnName === "apiLogList") {
+    const limit = args[0] || 300;
+    res = await fetch(`${WEB_APP_URL}?action=logList&limit=${encodeURIComponent(limit)}&_=${Date.now()}`, {
+      method: "GET",
+      redirect: "follow"
+    });
+  } else if (fnName === "apiPost") {
+    res = await fetch(WEB_APP_URL, {
+      method: "POST",
+      redirect: "follow",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(args[0] || {})
+    });
+  } else {
+    throw new Error("ไม่รู้จักฟังก์ชัน: " + fnName);
+  }
+
+  if (!res.ok) {
+    throw new Error("HTTP " + res.status);
+  }
+  const json = await res.json();
+  if (!json || json.ok === false) {
+    throw new Error((json && json.error) || "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ");
+  }
+  return json.data;
+}
+async function apiList() {
+  return gsRun("apiList");
+}
+async function apiPost(payload) {
+  return gsRun("apiPost", {
+    ...payload,
+    actor: currentActor
+  });
+}
+async function apiLogList(limit) {
+  return gsRun("apiLogList", limit);
+}
+
+// ชื่อผู้ใช้งานของเครื่องนี้ (เลือกครั้งแรกที่เปิดแอป) — ส่งไปกับทุก apiPost เพื่อบันทึกใน ActivityLog
+const ACTOR_STORAGE_KEY = "sitePhotoLog.actor";
+function readStoredActor() {
+  try {
+    return localStorage.getItem(ACTOR_STORAGE_KEY) || "";
+  } catch (err) {
+    return "";
+  }
+}
+let currentActor = readStoredActor();
+function saveCurrentActor(name) {
+  currentActor = name;
+  try {
+    localStorage.setItem(ACTOR_STORAGE_KEY, name);
+  } catch (err) {
+    console.error("[APP ERROR]", err);
+  }
+}
+const THAI_MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+const JOB_TYPES = ["WORKSHOP", "ออกร้าน + WORKSHOP", "ออกร้าน", "LIVE SURGERY / WEBINAR", "VISIT MEETING", "WORKSHOP+LIVE SURGERY", "ออกร้าน+LIVE SURGERY"];
+// รายชื่อในหน้าต่าง "คุณคือใคร?" (ชื่อผู้ใช้งานของเครื่องนี้)
+const DEVICE_USERS = ["ปฐมพร (ตี๋)", "อมรเทพ (เอ้)"];
+const REPRESENTATIVES = ["วรวรรณ (พี่ฝน)", "มธุริน (พี่แอน)", "ธเนศ (พี่น่าน)", "รุจิรา (พี่เดียร์)", "วรวุฒิ (พี่โจ้)", "เปรม (พี่จ็อบ)", "จุติมา (พี่ส้ม)", "พรพุฒิ (ตาเก่ง)", "เสาวลักษณ์ (พี่เก๋)", "ฉัตรกมล (พี่โปร)", "กิตติศักดิ์ (พี่อ๋อ)", "กัญญาภัค (พี่กิ๊ก)", "ชวัลนุช (พี่ฟ้า)", "กีรติ (พี่ก็อต)", "ศักรินทร์ (พี่นุ๊ก)", "ปัณณวัฒน์ (พี่เอฟ)", "ชานนท์ (พี่เอ็ม)", "ชญานิศ (พ้อยท์)", "อนันตพงษ์ (พี่โด้)", "นฤนาท (พี่ฟักทอง)", "จารุวิทย์ (พี่เติร์ด)", "อโนชา (พี่ต๊อด)"];
+// รายชื่อตัวเลือกของ "ลูกงาน" แยกตามบริษัท
+const SUB_WORKER_GROUPS = [
+  {
+    label: "KOSIN (โกสินทร์)",
+    options: ["โกสินทร์", "กุศล", "กาญจนา(พี่ลีฟ)", "วรวรรณ(ฝน)", "มธุริน(แอน)", "จรุงจิต(หมอผึ้ง)", "โกสีห์(พี่จ๋าย)", "ปราโมทย์(โมทย์)", "ธเนศ(น่าน)", "รุจิรา(เดียร์)", "อัครเดช(ซี)", "พรพิมพ์(พิมพ์)", "วรวุฒิ(โจ้)", "เปรม(เปรม)", "จุติมา(ส้ม)", "วงศกร(เบนซ์)", "ศศิธร(เนย)", "พรพุฒิ(เก่ง)", "เสาวลักษณ์(เก๋)", "พรพิมล(กิ๊ก)", "ฉัตรกมล(โปร)", "ยุทธนา(บาส)", "เจตพล(น็อต)", "กิตติศักดิ์(อ๋อ)", "กัญญาภัค(กิ๊ก)", "ทศพล(ปอนด์)", "พงษ์สิทธิ์(ต่อ)", "ภาณุรัญ(ซัน)", "ธนากร(หนุ่ม)", "พัฒชเนตร(เฟิร์ส)", "ประวิทย์(ต้น)", "อรัญญา(เจน)", "การัณยวีร์(เกล้า)", "ชวัลนุช(ฟ้า)", "ธนาวุฒิ(กอล์ฟ)", "กิตติธัช(ทัช)", "เกียรติศักดิ์(นิก)", "ภัทรวดี(ใบเฟิร์น)", "อับดุล(ยะ)", "ชานนท์(หนุ่ม)", "ปัญญา(วี)", "ศิลามณี(แคท)", "อัมรินทร์(นาย)", "ไพโรจน์(ยีส)", "กาญจนรัตน์(เชียร์)", "ชญาดา(พิม)", "กีรติ(ก๊อต)", "แคทรียา(แคท)", "ปฐมพร(ตี๋)", "นำชัย(แจ๊บ)", "ศักรินทร์(นุ๊ก)", "ปัณณวัฒน์(เอฟ)", "ปิยวัฒน์(สปาย)", "ชุติณัชชา(บีบี)", "เฉลิมชัย(แบงค์)", "อมรเทพ(เอ้)", "อุไลวรรณ(น้องเล็ก)", "พันณี(พี่ณี)", "มณฑกานต์(กานต์)", "ชานนท์(เอ็ม)", "เฉลิมชัย(พี่เต้ย)", "นราวิชญ์(ไอซ์)", "ปัณณวัฒน์(นิก)", "ชญานิศ(พ้อย)", "ฐานิตา(พลอย)", "สิทธิกร(วิน)", "นาวิน(โอลีฟ)", "อภิชญา(อะตอม)", "จักรพันธ์(จอน)", "ศิริอาภรณ์(พี่เจน)", "ศริตา(ชมพู่)", "ชนินทร์(ปลื้ม)", "ณัฐภูมิ(นัท)", "สุรีรัตน์(น้ำขิง)", "กัญญารัตน์(น้ำหวาน)", "ทนงศักดิ์(อั๋น)", "อานนทวัฒน์(ก๊อต)", "ภาคภูมิ(ปิง)", "มานพ(แบงค์)", "อนันตพงษ์(โด้)", "นฤนาท(ฟักทอง)", "ศศิธร(นุ่น)", "จารุวิทย์(เติส)", "สมัชชา(เจมส์)", "ศุภกฤต(โบ๊ท)", "อโนชา(ต๊อด)", "นิราวรรณย์(มินิ)", "จีรภัทร(พีท)", "อัจจิมา(หยก)", "ชนก(ปราย)", "ชานนท์(โย)", "จิรวัฒน์(กันต์)", "ชลิตา(ฉา)", "รินทร์รฐา(พี่รินทร์)", "นิรุทธ์(เอี่ยว)", "เมทิณี(โมเม)", "ศุภวดี(ผ้าแพร)", "วุฒิชัย(แอน)", "นัฐพงษ์(แม็ก)", "เกวลิน(เกว)", "จิราพร(แพน)", "ยุทธนา(เอก)", "ธนศักดิ์(เต้)", "วิรันยา(เดียร์)", "ศฎายุทธ(โอม)", "ชนากานต์(เปอร์)", "นันทพร(เฟิร์น)", "ฉันท์ชม(เน)", "จามินท์(จามินท์)", "อนันดา(นัด)", "ขจร(ลุงจร)"]
+  },
+  {
+    label: "หจก. เอนโดฯ (ENDO)",
+    options: ["กุศล", "ณัฐชยา", "ฐิติมา", "ชลธร", "ธรรมธร", "เอริณ", "อธิป", "ปราณี", "ลำไพ", "วัชนีย์(ป้าวัช)", "ธนากร(กบ)", "ศุภรัตน์(ยุ้ย)", "ดาวรุ่ง(เปิ้ล)", "กุลชา(ท้องฟ้า)", "ธราวรินทร์(แคนดี้)", "ธัชชัย(ท็อป)", "พงษธร(พัท)", "ธนศักดิ์(เต้)", "กาญจนา(เจน)", "วรวุฒิ(เอฟ)", "ณัฐนนท์(โบ้ท)", "ณัฐวดี(ดิว)"]
+  },
+  {
+    label: "สยามเวิร์ค (SIAMWORK)",
+    options: ["บุศรา(พี่แหม่ม)", "อุมารินทร์(อุ๊)", "วีรชัย(เอก)", "ฐิติกร(บิ๊ก)", "ยุทธนา(พร)", "ก่อเกียรติ(เบนซ์)", "เก็จมณี(เก๋)", "สรวิชญ์(เค)", "ปิยทัช(ทัช)", "ปัณณ์พัฒน์(โฟล์ค)", "ทวีธน์(วิน)", "พยงค์(ป้าต้อย)", "ณัฐพนธ์(โฟล์ค)", "วุฒิชัย(บอล)", "แพรวา(แพตตี้)", "ณฤดี(มายด์)", "ปริยากร(แตงโม)", "ศิโรรัตน์(นุ่น)", "สงกรานต์(หมอ)", "จีรศักดิ์(ปอนด์)"]
+  },
+  {
+    label: "กู๊ดวิล (GOODWILL)",
+    options: ["โกศล(พี่หยุ่ง)", "สุนทร(พี่กบ)", "จักรกฤษณ์(ดิว)", "พีรยา(พี่หมวย)", "พัชรีรัตน์(พี่พัช)", "วริทยา(พี่แจ๋ว)", "พงศธร(ปี๊ด)", "เผด็จศึก(โอ๊ต)", "เบญจวรรณ(พลอย)", "วิมลรัตน์(ตุ๊กตา)", "ชวภณ(เพชร)", "กัญญาวีร์(เดียร์)", "วิทยากร(เอ)"]
+  },
+  {
+    label: "เนลอิฐ โซลูชั่น (NAILIT)",
+    options: ["อมรเทพ(เอ้)"]
+  },
+];
+const STAGES = {
+  sendOut: {
+    label: "ส่งของออก",
+    photoLabel: "ภาพส่งออก",
+    icon: Package,
+    accent: "blue"
+  },
+  install: {
+    label: "ติดตั้ง",
+    photoLabel: "ภาพติดตั้ง",
+    icon: Wrench,
+    accent: "amber"
+  },
+  returnItems: {
+    label: "ของส่งกลับ",
+    photoLabel: "ภาพของส่งกลับ",
+    icon: RotateCcw,
+    accent: "emerald"
+  }
+};
+const ACCENT = {
+  blue: {
+    border: "border-blue-700",
+    dot: "bg-blue-700",
+    softText: "text-blue-800"
+  },
+  amber: {
+    border: "border-amber-600",
+    dot: "bg-amber-600",
+    softText: "text-amber-700"
+  },
+  emerald: {
+    border: "border-emerald-700",
+    dot: "bg-emerald-700",
+    softText: "text-emerald-800"
+  }
+};
+// สีพื้นหลังพาสเทลอ่อนของแต่ละ accent — ใช้กับป้ายตัวเลข/ไอคอนวงกลมให้ดูมีชีวิตชีวาขึ้น
+const ACCENT_SOFT_BG = {
+  blue: "bg-blue-50 text-blue-700",
+  amber: "bg-amber-50 text-amber-700",
+  emerald: "bg-emerald-50 text-emerald-700"
+};
+const STATUS_STYLE = {
+  green: {
+    card: "bg-emerald-50 border-emerald-400",
+    label: "เสร็จสมบูรณ์แล้ว",
+    labelClass: "bg-emerald-600 text-white",
+    labelAnim: "pill-shine"
+  },
+  orange: {
+    card: "bg-orange-50 border-orange-400",
+    label: "ถึงวันงานแล้ว",
+    labelClass: "bg-orange-500 text-white",
+    labelAnim: "pill-siren"
+  },
+  red: {
+    card: "bg-red-50 border-red-400",
+    label: "ใกล้ถึงวันงาน",
+    labelClass: "bg-red-500 text-white",
+    labelAnim: ""
+  },
+  white: {
+    card: "bg-white border-stone-200",
+    label: null,
+    labelClass: "",
+    labelAnim: ""
+  }
+};
+function newId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function emptyJob(f) {
+  return {
+    id: newId(),
+    name: f.name,
+    date: f.date,
+    representative: f.representative || "",
+    subWorkers: normalizeSubWorkers(f.subWorkers),
+    venueName: f.venueName || "",
+    roomDetail: f.roomDetail || "",
+    mapUrl: f.mapUrl || "",
+    jobType: f.jobType || "",
+    coverPhoto: f.coverPhoto || null,
+    createdAt: new Date().toISOString(),
+    prepItems: [],
+    categories: {
+      sendOut: {
+        entries: []
+      },
+      install: {
+        installDate: f.installDate || "",
+        installTime: f.installTime || "",
+        useUntilDate: f.useUntilDate || "",
+        uninstallDate: f.uninstallDate || "",
+        uninstallTime: f.uninstallTime || "",
+        entries: []
+      },
+      returnItems: {
+        entries: []
+      }
+    }
+  };
+}
+function compressImage(file, maxWidth = 1000, quality = 0.65) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => reject(new Error("โหลดรูปไม่สำเร็จ"));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("อ่านไฟล์ไม่สำเร็จ"));
+    reader.readAsDataURL(file);
+  });
+}
+function fmtDate(d) {
+  if (!d) return "—";
+  try {
+    return new Date(d + "T00:00:00").toLocaleDateString("th-TH", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+  } catch (err) {
+    console.error("[APP ERROR]", err);
+    return d;
+  }
+}
+function fmtTimestamp(iso) {
+  try {
+    return new Date(iso).toLocaleString("th-TH", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch (err) {
+    console.error("[APP ERROR]", err);
+    return iso;
+  }
+}
+function monthGroupKey(dateStr) {
+  if (!dateStr) return "9999-99";
+  const d = new Date(dateStr + "T00:00:00");
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function monthGroupLabel(dateStr) {
+  if (!dateStr) return "ไม่ระบุวันที่";
+  const d = new Date(dateStr + "T00:00:00");
+  return `${THAI_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+function isJobComplete(job) {
+  return Object.keys(STAGES).every(k => job.categories[k].entries.length > 0);
+}
+function missingStages(job) {
+  return Object.keys(STAGES).filter(k => job.categories[k].entries.length === 0);
+}
+function computeStatus(job) {
+  if (isJobComplete(job)) return "green";
+  if (!job.date) return "white";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const eventDate = new Date(job.date + "T00:00:00");
+  const diffDays = Math.round((eventDate - today) / 86400000);
+  if (diffDays <= 0) return "orange";
+  if (diffDays <= 7) return "red";
+  return "white";
+}
+function installCountdown(job) {
+  const inst = job.categories.install.installDate;
+  if (!inst) return null;
+  const time = job.categories.install.installTime || "00:00";
+  const target = new Date(`${inst}T${time}:00`);
+  const diffMs = target - new Date();
+  if (diffMs <= 0) return null;
+  const totalHours = Math.floor(diffMs / 3600000);
+  return {
+    days: Math.floor(totalHours / 24),
+    hours: totalHours % 24
+  };
+}
+function normalizeSubWorkers(v) {
+  if (!Array.isArray(v) || v.length === 0) return [];
+  if (typeof v[0] === "string") {
+    const flat = v.map(s => String(s || "").replace(/\|/g, "").trim()).filter(Boolean);
+    return flat.length > 0 ? [{ date: "", workers: flat }] : [];
+  }
+  return v
+    .map(item => {
+      if (!item || typeof item !== "object") return null;
+      const d = String(item.date || "").trim();
+      const ws = Array.isArray(item.workers)
+        ? item.workers.map(s => String(s || "").replace(/\|/g, "").trim()).filter(Boolean)
+        : [];
+      return ws.length > 0 ? { date: d, workers: ws } : null;
+    })
+    .filter(Boolean);
+}
+function addOneDayStr(dateStr) {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr + "T00:00:00");
+    d.setDate(d.getDate() + 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  } catch (e) {
+    return "";
+  }
+}
+function formatSubWorkersLines(subWorkers) {
+  return normalizeSubWorkers(subWorkers).map(g =>
+    g.date ? `${fmtDate(g.date)}: ${g.workers.join(", ")}` : g.workers.join(", ")
+  );
+}
+function hasSubWorkers(job) {
+  return normalizeSubWorkers(job && job.subWorkers).length > 0;
+}
+function LabeledInput({
+  label,
+  ...props
+}) {
+  return React.createElement("div", null, React.createElement("label", {
+    className: "block text-sm font-medium text-stone-700 mb-1"
+  }, label), React.createElement("input", {
+    ...props,
+    className: "w-full border border-stone-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }));
+}
+function LabeledSelect({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder
+}) {
+  return React.createElement("div", null, React.createElement("label", {
+    className: "block text-sm font-medium text-stone-700 mb-1"
+  }, label), React.createElement("select", {
+    value: value,
+    onChange: e => onChange(e.target.value),
+    className: "w-full border border-stone-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }, React.createElement("option", {
+    value: ""
+  }, placeholder), options.map(o => React.createElement("option", {
+    key: o,
+    value: o
+  }, o))));
+}
+const OTHER_OPTION_VALUE = "__OTHER__";
+// เลือก 1 รายการแบบพิมพ์ค้นหาได้ (เช่น "ชื่อผู้แทน", "ประเภทของงาน") หรือพิมพ์ค่าใหม่เองได้
+function LabeledSelectWithOther({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    function handleOutside(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("touchstart", handleOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("touchstart", handleOutside);
+    };
+  }, []);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q ? options.filter(o => o.toLowerCase().includes(q)) : options;
+  const exactMatch = query.trim() && options.some(o => o.toLowerCase() === q);
+
+  function selectVal(v) {
+    onChange(v);
+    setQuery("");
+    setOpen(false);
+  }
+
+  return React.createElement("div", {
+    ref: wrapRef,
+    className: "relative"
+  }, label && React.createElement("label", {
+    className: "block text-sm font-medium text-stone-700 mb-1"
+  }, label), React.createElement("div", {
+    className: "relative flex items-center"
+  }, React.createElement("input", {
+    type: "text",
+    value: open ? query : (value || ""),
+    onFocus: () => {
+      setOpen(true);
+      setQuery("");
+    },
+    onChange: e => {
+      setQuery(e.target.value);
+      if (!open) setOpen(true);
+    },
+    onKeyDown: e => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        setQuery("");
+      } else if (e.key === "Enter" && open) {
+        e.preventDefault();
+        if (filtered.length === 1) {
+          selectVal(filtered[0]);
+        } else if (query.trim()) {
+          selectVal(query.trim());
+        }
+      }
+    },
+    placeholder: open && value ? value : (placeholder || "พิมพ์เพื่อค้นหา..."),
+    className: "w-full border border-stone-300 rounded-md pl-3 pr-14 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }), React.createElement("div", {
+    className: "absolute right-2 flex items-center gap-1"
+  }, (value || query) && React.createElement("button", {
+    type: "button",
+    onClick: () => {
+      onChange("");
+      setQuery("");
+      setOpen(true);
+    },
+    className: "w-5 h-5 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 flex items-center justify-center text-xs",
+    title: "ล้างค่า"
+  }, "×"), React.createElement("button", {
+    type: "button",
+    onClick: () => {
+      setOpen(o => !o);
+      setQuery("");
+    },
+    className: "w-5 h-5 text-stone-500 hover:text-stone-800 flex items-center justify-center text-xs",
+    tabIndex: -1
+  }, open ? "▲" : "▼"))), open && React.createElement("div", {
+    className: "absolute left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-stone-200 rounded-md shadow-lg z-30 divide-y divide-stone-100"
+  }, filtered.length > 0 ? filtered.map(o => React.createElement("button", {
+    key: o,
+    type: "button",
+    onClick: () => selectVal(o),
+    className: `w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${o === value ? "bg-blue-50 text-[#074089] font-medium" : "text-stone-700"}`
+  }, o)) : React.createElement("div", {
+    className: "px-3 py-2 text-xs text-stone-400"
+  }, "ไม่พบชื่อที่ค้นหา"), query.trim() && !exactMatch && React.createElement("button", {
+    type: "button",
+    onClick: () => selectVal(query.trim()),
+    className: "w-full text-left px-3 py-2 text-sm text-[#074089] font-medium bg-blue-50/60 hover:bg-blue-100"
+  }, `+ ใช้ "${query.trim()}"`)));
+}
+
+// เลือกได้หลายคนแบบพิมพ์ค้นหาชื่อได้ (เช่น "ลูกงาน") — แสดงเป็นชิป กด × เพื่อลบ
+// หรือพิมพ์ชื่อใหม่เพิ่มเองได้ทันที
+function LabeledMultiSelectWithOther({
+  label,
+  values,
+  onChange,
+  options,
+  groups,
+  placeholder
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const wrapRef = useRef(null);
+  const inputRef = useRef(null);
+  const selected = values || [];
+
+  useEffect(() => {
+    function handleOutside(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("touchstart", handleOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("touchstart", handleOutside);
+    };
+  }, []);
+
+  const groupList = groups || [{
+    label: null,
+    options: options || []
+  }];
+
+  const q = query.trim().toLowerCase();
+  const filteredGroups = groupList.map(g => ({
+    label: g.label,
+    options: g.options.filter(o => !selected.includes(o) && (!q || o.toLowerCase().includes(q)))
+  })).filter(g => g.options.length > 0);
+
+  const allMatches = filteredGroups.flatMap(g => g.options);
+  const customCandidate = query.trim().replace(/\|/g, "").trim();
+  const exactExists = customCandidate && (
+    selected.includes(customCandidate) ||
+    groupList.some(g => g.options.some(o => o.toLowerCase() === customCandidate.toLowerCase()))
+  );
+
+  function add(name) {
+    const n = String(name).replace(/\|/g, "").trim();
+    if (!n || selected.includes(n)) return;
+    onChange([...selected, n]);
+    setQuery("");
+    if (inputRef.current) inputRef.current.focus();
+  }
+  function remove(name) {
+    onChange(selected.filter(v => v !== name));
+  }
+
+  return React.createElement("div", {
+    ref: wrapRef,
+    className: "relative"
+  }, label && React.createElement("label", {
+    className: "block text-sm font-medium text-stone-700 mb-1"
+  }, label), selected.length > 0 && React.createElement("div", {
+    className: "flex flex-wrap gap-1.5 mb-1.5"
+  }, selected.map(name => React.createElement("span", {
+    key: name,
+    className: "inline-flex items-center gap-1 bg-blue-50 text-[#074089] border border-blue-200 rounded-full pl-2.5 pr-1.5 py-1 text-xs font-medium"
+  }, name, React.createElement("button", {
+    type: "button",
+    onClick: () => remove(name),
+    className: "w-4 h-4 rounded-full flex items-center justify-center text-[#074089] hover:bg-blue-200 leading-none",
+    "aria-label": "ลบ " + name
+  }, "×")))), React.createElement("div", {
+    className: "relative flex items-center"
+  }, React.createElement("input", {
+    ref: inputRef,
+    type: "text",
+    value: query,
+    onFocus: () => setOpen(true),
+    onChange: e => {
+      setQuery(e.target.value);
+      if (!open) setOpen(true);
+    },
+    onKeyDown: e => {
+      if (e.key === "Escape") {
+        setOpen(false);
+      } else if (e.key === "Enter" && open) {
+        e.preventDefault();
+        if (allMatches.length === 1) {
+          add(allMatches[0]);
+        } else if (customCandidate && !exactExists) {
+          add(customCandidate);
+        }
+      }
+    },
+    placeholder: placeholder || "พิมพ์ค้นหาชื่อ...",
+    className: "w-full border border-stone-300 rounded-md pl-3 pr-14 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }), React.createElement("div", {
+    className: "absolute right-2 flex items-center gap-1"
+  }, query && React.createElement("button", {
+    type: "button",
+    onClick: () => {
+      setQuery("");
+      if (inputRef.current) inputRef.current.focus();
+    },
+    className: "w-5 h-5 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 flex items-center justify-center text-xs",
+    title: "ล้างคำค้น"
+  }, "×"), React.createElement("button", {
+    type: "button",
+    onClick: () => setOpen(o => !o),
+    className: "w-5 h-5 text-stone-500 hover:text-stone-800 flex items-center justify-center text-xs",
+    tabIndex: -1
+  }, open ? "▲" : "▼"))), open && React.createElement("div", {
+    className: "absolute left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-stone-200 rounded-md shadow-lg z-30"
+  }, filteredGroups.length > 0 ? filteredGroups.map((g, gi) => React.createElement("div", {
+    key: gi
+  }, g.label && React.createElement("div", {
+    className: "px-3 py-1 text-[11px] font-semibold text-stone-400 bg-stone-50 sticky top-0 border-y border-stone-100"
+  }, g.label), g.options.map(o => React.createElement("button", {
+    key: gi + "|" + o,
+    type: "button",
+    onClick: () => add(o),
+    className: "w-full text-left px-3 py-2 text-sm text-stone-700 hover:bg-blue-50 hover:text-[#074089]"
+  }, o)))) : React.createElement("div", {
+    className: "px-3 py-2 text-xs text-stone-400"
+  }, q ? "ไม่พบชื่อที่ค้นหา" : "เลือกครบทุกรายชื่อแล้ว"), customCandidate && !exactExists && React.createElement("button", {
+    type: "button",
+    onClick: () => add(customCandidate),
+    className: "w-full text-left px-3 py-2 text-sm text-[#074089] font-medium bg-blue-50/70 hover:bg-blue-100 border-t border-stone-100"
+  }, `+ เพิ่ม "${customCandidate}"`)));
+}
+// เลือกลูกงานแยกตามวันที่ (1-5 วันหรือมากกว่า) — แต่ละวันเลือกวันที่และลูกงานหลายคนได้อิสระ
+function SubWorkersByDateEditor({
+  label,
+  values,
+  onChange,
+  groups,
+  placeholder,
+  defaultDate
+}) {
+  const rows = Array.isArray(values) && values.length > 0
+    ? values.map(item => typeof item === "string"
+        ? { date: "", workers: [item] }
+        : { date: item && item.date ? item.date : "", workers: Array.isArray(item && item.workers) ? item.workers : [] })
+    : [{ date: defaultDate || "", workers: [] }];
+
+  function updateRow(idx, patch) {
+    const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
+    onChange(next);
+  }
+  function addDay() {
+    const lastDate = rows[rows.length - 1] && rows[rows.length - 1].date;
+    const nextDate = lastDate ? addOneDayStr(lastDate) : (defaultDate || "");
+    onChange([...rows, { date: nextDate, workers: [] }]);
+  }
+  function removeDay(idx) {
+    if (rows.length <= 1) {
+      onChange([]);
+      return;
+    }
+    onChange(rows.filter((_, i) => i !== idx));
+  }
+  function copyPrevDay(idx) {
+    if (idx <= 0) return;
+    const prevWorkers = rows[idx - 1].workers || [];
+    updateRow(idx, { workers: [...prevWorkers] });
+  }
+
+  return React.createElement("div", {
+    className: "space-y-2"
+  }, React.createElement("div", {
+    className: "flex items-center justify-between"
+  }, React.createElement("label", {
+    className: "block text-sm font-medium text-stone-700"
+  }, label), React.createElement("button", {
+    type: "button",
+    onClick: addDay,
+    className: "inline-flex items-center gap-1 text-xs font-medium text-[#074089] bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md px-2.5 py-1"
+  }, React.createElement(Plus, {
+    className: "w-3.5 h-3.5"
+  }), "เพิ่มวัน")), rows.map((row, idx) => React.createElement("div", {
+    key: idx,
+    className: "border border-stone-200 rounded-lg p-2.5 bg-stone-50/70 space-y-2"
+  }, React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, React.createElement("span", {
+    className: "text-xs font-semibold text-stone-500 shrink-0"
+  }, `วันที่ ${idx + 1}`), React.createElement("input", {
+    type: "date",
+    value: row.date || "",
+    onChange: e => updateRow(idx, { date: e.target.value }),
+    className: "flex-1 min-w-0 border border-stone-300 rounded-md px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }), idx > 0 && row.workers.length === 0 && rows[idx - 1].workers.length > 0 && React.createElement("button", {
+    type: "button",
+    onClick: () => copyPrevDay(idx),
+    className: "text-xs text-[#074089] hover:underline shrink-0 px-1.5 py-1"
+  }, "คัดลอกวันก่อน"), (rows.length > 1 || row.date || row.workers.length > 0) && React.createElement("button", {
+    type: "button",
+    onClick: () => removeDay(idx),
+    className: "text-xs text-red-600 hover:bg-red-50 rounded px-2 py-1 shrink-0"
+  }, "ลบ")), React.createElement(LabeledMultiSelectWithOther, {
+    label: null,
+    values: row.workers,
+    onChange: ws => updateRow(idx, { workers: ws }),
+    groups: groups,
+    placeholder: placeholder
+  }))));
+}
+const TIME_HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const TIME_MINUTES = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
+// เลือกเวลาแบบ dropdown ชม./นาที แยกกัน (นาทีมีให้เลือกทีละ 5 นาทีเท่านั้น)
+// ใช้แทน <input type="time"> เพราะตัวเลือกเวลาแบบ native บนมือถือหลายรุ่นไม่ยอมรับ
+// ค่า step (ยังคงแสดงให้เลือกได้ทุกนาที) จึงบังคับช่วงเวลาให้ถูกต้องด้วยวิธีนี้แทน
+function LabeledTimeSelect({
+  label,
+  value,
+  onChange
+}) {
+  const parts = (value || "").split(":");
+  const hour = parts[0] || "";
+  const minute = parts[1] || "";
+  function setHour(h) {
+    onChange(`${h}:${minute || "00"}`);
+  }
+  function setMinute(m) {
+    onChange(`${hour || "00"}:${m}`);
+  }
+  return React.createElement("div", null, React.createElement("label", {
+    className: "block text-sm font-medium text-stone-700 mb-1"
+  }, label), React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, React.createElement("select", {
+    value: hour,
+    onChange: e => setHour(e.target.value),
+    className: "flex-1 border border-stone-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }, React.createElement("option", {
+    value: ""
+  }, "ชม."), TIME_HOURS.map(h => React.createElement("option", {
+    key: h,
+    value: h
+  }, h))), React.createElement("span", {
+    className: "text-stone-400 text-sm shrink-0"
+  }, ":"), React.createElement("select", {
+    value: minute,
+    onChange: e => setMinute(e.target.value),
+    className: "flex-1 border border-stone-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }, React.createElement("option", {
+    value: ""
+  }, "นาที"), TIME_MINUTES.map(m => React.createElement("option", {
+    key: m,
+    value: m
+  }, m)))));
+}
+const EMPTY_FORM = {
+  name: "",
+  representative: "",
+  subWorkers: [],
+  jobType: "",
+  venueName: "",
+  roomDetail: "",
+  mapUrl: "",
+  installDate: "",
+  installTime: "",
+  date: "",
+  useUntilDate: "",
+  uninstallDate: "",
+  uninstallTime: "",
+  coverPhoto: null
+};
+function ActorPicker({
+  current,
+  onChoose,
+  onClose
+}) {
+  const [custom, setCustom] = useState("");
+  return React.createElement("div", {
+    className: "fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4",
+    onClick: onClose || undefined
+  }, React.createElement("div", {
+    className: "bg-white rounded-2xl shadow-xl max-w-xs w-full p-5 max-h-[85vh] flex flex-col",
+    onClick: e => e.stopPropagation()
+  }, React.createElement("div", {
+    className: "font-semibold text-stone-900 mb-1"
+  }, "คุณคือใคร?"), React.createElement("div", {
+    className: "text-xs text-stone-500 mb-3"
+  }, "เลือกชื่อครั้งเดียว เครื่องนี้จะจำไว้ ใช้บันทึกประวัติว่าใครทำอะไรในแอป"), React.createElement("div", {
+    className: "flex-1 overflow-y-auto space-y-1.5 -mx-1 px-1"
+  }, DEVICE_USERS.map(name => React.createElement("button", {
+    key: name,
+    onClick: () => onChoose(name),
+    className: `w-full text-left px-3 py-2 rounded-xl border text-sm ${name === current ? "border-[#074089] bg-blue-50 text-[#074089] font-medium" : "border-stone-200 text-stone-700 hover:bg-stone-50"}`
+  }, name))), React.createElement("div", {
+    className: "flex gap-2 pt-3"
+  }, React.createElement("input", {
+    value: custom,
+    onChange: e => setCustom(e.target.value),
+    placeholder: "หรือพิมพ์ชื่อเอง",
+    className: "flex-1 min-w-0 border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }), React.createElement("button", {
+    onClick: () => onChoose(custom.trim()),
+    disabled: !custom.trim(),
+    className: "bg-[#074089] text-white rounded-xl px-3 text-sm font-medium disabled:opacity-40"
+  }, "ตกลง")), onClose && React.createElement("button", {
+    onClick: onClose,
+    className: "mt-2 text-sm text-stone-500"
+  }, "ยกเลิก")));
+}
+function ActivityLogView({
+  logs,
+  loading,
+  jobName,
+  onRefresh,
+  onShowAll,
+  onPhoto
+}) {
+  return React.createElement("div", {
+    className: "flex-1 p-4 space-y-3"
+  }, React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, React.createElement("div", {
+    className: "flex-1 min-w-0 text-sm text-stone-500 truncate"
+  }, jobName ? `เฉพาะงาน: ${jobName}` : "ล่าสุดอยู่บนสุด"), jobName && React.createElement("button", {
+    onClick: onShowAll,
+    className: "text-xs text-[#074089] underline shrink-0"
+  }, "ดูทุกงาน"), React.createElement("button", {
+    onClick: onRefresh,
+    disabled: loading,
+    className: "text-xs border border-stone-300 rounded-lg px-2.5 py-1 text-stone-600 bg-white shrink-0 disabled:opacity-40"
+  }, "รีเฟรช")), loading && React.createElement("div", {
+    className: "flex items-center justify-center gap-2 text-stone-400 text-sm py-10"
+  }, React.createElement(Loader2, {
+    className: "w-4 h-4 animate-spin"
+  }), "กำลังโหลดประวัติ..."), !loading && logs.length === 0 && React.createElement("div", {
+    className: "text-center text-stone-400 text-sm py-16"
+  }, "ยังไม่มีประวัติการใช้งาน"), !loading && logs.map((log, i) => React.createElement("div", {
+    key: i,
+    className: "bg-white border border-stone-200 rounded-2xl p-2.5 flex gap-3 shadow-sm"
+  }, log.photo ? React.createElement("button", {
+    onClick: () => onPhoto(log.photo),
+    className: "w-12 h-12 shrink-0 rounded-lg overflow-hidden bg-stone-100",
+    "aria-label": "ดูรูปเต็มจอ"
+  }, React.createElement("img", {
+    src: log.photo,
+    alt: "",
+    className: "w-full h-full object-cover"
+  })) : React.createElement("div", {
+    className: "w-12 h-12 shrink-0 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400"
+  }, React.createElement(History, {
+    className: "w-5 h-5"
+  })), React.createElement("div", {
+    className: "flex-1 min-w-0 text-sm"
+  }, React.createElement("div", {
+    className: "text-stone-800"
+  }, React.createElement("span", {
+    className: "font-semibold"
+  }, log.actor), " ", log.action, log.stage ? ` · ${log.stage}` : ""), !jobName && (log.jobName || log.jobNumber) && React.createElement("div", {
+    className: "text-xs text-stone-500 truncate"
+  }, log.jobNumber ? `#${log.jobNumber} ` : "", log.jobName), log.detail && React.createElement("div", {
+    className: "text-xs text-stone-600 whitespace-pre-wrap mt-0.5"
+  }, log.detail), React.createElement("div", {
+    className: "text-[11px] font-mono text-stone-400 mt-0.5"
+  }, fmtTimestamp(log.timestamp))))));
+}
+function SitePhotoLog() {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [view, setView] = useState("list");
+  const [activeJobId, setActiveJobId] = useState(null);
+  const [activeStage, setActiveStage] = useState("sendOut");
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [pendingNote, setPendingNote] = useState("");
+  const [pendingPrepNote, setPendingPrepNote] = useState("");
+  const [viewerPhoto, setViewerPhoto] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [filterYear, setFilterYear] = useState("");
+  const [filterMonth, setFilterMonth] = useState("");
+  const [hideCompleted, setHideCompleted] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const [calendarMonthIdx, setCalendarMonthIdx] = useState(new Date().getMonth());
+  const [calendarSelectedDate, setCalendarSelectedDate] = useState("");
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [actor, setActor] = useState(currentActor);
+  const [showActorPicker, setShowActorPicker] = useState(!currentActor);
+  const [logs, setLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logJobId, setLogJobId] = useState(null);
+  const fileInputRef = useRef(null);
+  const newJobCoverInputRef = useRef(null);
+  const coverEditInputRef = useRef(null);
+  const deleteResetTimer = useRef(null);
+  const refreshJobs = useCallback(async () => {
+    try {
+      const data = await apiList();
+      setJobs(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err) {
+      console.error("[APP ERROR]", err);
+      setError("โหลดข้อมูลจาก Google Sheets ไม่สำเร็จ ลองอีกครั้ง");
+    }
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await apiList();
+        if (!cancelled) setJobs(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("[APP ERROR]", err);
+        if (!cancelled) setError("โหลดข้อมูลจาก Google Sheets ไม่สำเร็จ ลองรีเฟรชหน้า");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2200);
+    return () => clearTimeout(t);
+  }, [toast]);
+  useEffect(() => {
+    return () => {
+      if (deleteResetTimer.current) clearTimeout(deleteResetTimer.current);
+    };
+  }, []);
+  function setF(key, value) {
+    setForm(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  }
+  function setEF(key, value) {
+    setEditForm(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  }
+  async function createJob() {
+    if (!form.name.trim()) return;
+    const job = emptyJob(form);
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPost({
+        action: "createJob",
+        job
+      });
+      setForm(EMPTY_FORM);
+      setActiveJobId(job.id);
+      setActiveStage("sendOut");
+      setView("jobDetail");
+      await refreshJobs();
+      setToast("สร้างงานสำเร็จ");
+    } catch (err) {
+      console.error("[APP ERROR]", err);
+      setError("สร้างงานไม่สำเร็จ ลองอีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  }
+  function chooseActor(name) {
+    if (!name) return;
+    saveCurrentActor(name);
+    setActor(name);
+    setShowActorPicker(false);
+  }
+  async function loadLogs() {
+    setLogsLoading(true);
+    try {
+      const data = await apiLogList(300);
+      setLogs(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("[APP ERROR]", err);
+      setError("โหลดประวัติการใช้งานไม่สำเร็จ ลองอีกครั้ง");
+    } finally {
+      setLogsLoading(false);
+    }
+  }
+  // jobId = null คือดูประวัติทุกงาน, ใส่ jobId คือดูเฉพาะงานนั้น
+  function openLog(jobId) {
+    setLogJobId(jobId || null);
+    setDeleteConfirm(false);
+    setView("log");
+    loadLogs();
+  }
+  function openJob(id) {
+    setActiveJobId(id);
+    setActiveStage("sendOut");
+    setDeleteConfirm(false);
+    setView("jobDetail");
+  }
+  function backToList() {
+    setDeleteConfirm(false);
+    if (deleteResetTimer.current) clearTimeout(deleteResetTimer.current);
+    setView("list");
+  }
+  function goPrevMonth() {
+    setCalendarSelectedDate("");
+    if (calendarMonthIdx === 0) {
+      setCalendarMonthIdx(11);
+      setCalendarYear(y => y - 1);
+    } else {
+      setCalendarMonthIdx(m => m - 1);
+    }
+  }
+  function goNextMonth() {
+    setCalendarSelectedDate("");
+    if (calendarMonthIdx === 11) {
+      setCalendarMonthIdx(0);
+      setCalendarYear(y => y + 1);
+    } else {
+      setCalendarMonthIdx(m => m + 1);
+    }
+  }
+  function openEditJob() {
+    const job = jobs.find(j => j.id === activeJobId);
+    if (!job) return;
+    setEditForm({
+      name: job.name || "",
+      representative: job.representative || "",
+      subWorkers: normalizeSubWorkers(job.subWorkers),
+      jobType: job.jobType || "",
+      venueName: job.venueName || "",
+      roomDetail: job.roomDetail || "",
+      mapUrl: job.mapUrl || "",
+      installDate: job.categories.install.installDate || "",
+      installTime: job.categories.install.installTime || "",
+      date: job.date || "",
+      useUntilDate: job.categories.install.useUntilDate || "",
+      uninstallDate: job.categories.install.uninstallDate || "",
+      uninstallTime: job.categories.install.uninstallTime || "",
+      coverPhoto: job.coverPhoto || null
+    });
+    setView("editJob");
+  }
+  async function saveEditJob() {
+    if (!editForm.name.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPost({
+        action: "updateJob",
+        jobId: activeJobId,
+        job: {
+          name: editForm.name,
+          date: editForm.date,
+          representative: editForm.representative,
+          subWorkers: normalizeSubWorkers(editForm.subWorkers),
+          venueName: editForm.venueName,
+          roomDetail: editForm.roomDetail,
+          mapUrl: editForm.mapUrl,
+          jobType: editForm.jobType,
+          categories: {
+            install: {
+              installDate: editForm.installDate,
+              installTime: editForm.installTime,
+              useUntilDate: editForm.useUntilDate,
+              uninstallDate: editForm.uninstallDate,
+              uninstallTime: editForm.uninstallTime
+            }
+          }
+        }
+      });
+      await refreshJobs();
+      setView("jobDetail");
+      setToast("บันทึกการแก้ไขสำเร็จ");
+    } catch (err) {
+      console.error("[APP ERROR]", err);
+      setError("บันทึกการแก้ไขไม่สำเร็จ ลองอีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function handlePhotoChosen(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    setSaving(true);
+    setError(null);
+    try {
+      for (const file of files) {
+        const dataUrl = await compressImage(file);
+        const entry = {
+          id: newId(),
+          photo: dataUrl,
+          note: pendingNote.trim(),
+          timestamp: new Date().toISOString()
+        };
+        await apiPost({
+          action: "addEntry",
+          jobId: activeJobId,
+          stage: activeStage,
+          entry
+        });
+      }
+      setPendingNote("");
+      await refreshJobs();
+      setToast(files.length > 1 ? `บันทึกข้อมูลสำเร็จ ${files.length} รูป` : "บันทึกข้อมูลสำเร็จ");
+    } catch (err) {
+      console.error("[APP ERROR]", err);
+      setError("เพิ่มรูปไม่สำเร็จ ลองอีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function addPrepItem() {
+    const text = pendingPrepNote.trim();
+    if (!text || !activeJobId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const entry = {
+        id: newId(),
+        note: text,
+        timestamp: new Date().toISOString()
+      };
+      await apiPost({
+        action: "addEntry",
+        jobId: activeJobId,
+        stage: "prep",
+        entry
+      });
+      setPendingPrepNote("");
+      await refreshJobs();
+    } catch (err) {
+      console.error("[APP ERROR]", err);
+      setError("เพิ่มรายการไม่สำเร็จ ลองอีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function deletePrepItem(entryId) {
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPost({
+        action: "deleteEntry",
+        entryId
+      });
+      await refreshJobs();
+    } catch (err) {
+      console.error("[APP ERROR]", err);
+      setError("ลบรายการไม่สำเร็จ ลองอีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function handleNewJobCoverChosen(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const dataUrl = await compressImage(file, 500, 0.6);
+      setF("coverPhoto", dataUrl);
+    } catch (err) {
+      console.error("[APP ERROR]", err);
+      setError("เพิ่มรูปไม่สำเร็จ ลองอีกครั้ง");
+    }
+  }
+  async function handleCoverEditChosen(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const dataUrl = await compressImage(file, 500, 0.6);
+      await apiPost({
+        action: "updateCoverPhoto",
+        jobId: activeJobId,
+        photoDataUrl: dataUrl
+      });
+      await refreshJobs();
+    } catch (err) {
+      console.error("[APP ERROR]", err);
+      setError("เพิ่มรูปไม่สำเร็จ ลองอีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function deleteEntry(entryId) {
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPost({
+        action: "deleteEntry",
+        entryId
+      });
+      await refreshJobs();
+    } catch (err) {
+      console.error("[APP ERROR]", err);
+      setError("ลบรูปไม่สำเร็จ ลองอีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  }
+  function requestDeleteJob() {
+    if (deleteConfirm) {
+      if (deleteResetTimer.current) clearTimeout(deleteResetTimer.current);
+      doDeleteJob();
+      return;
+    }
+    setDeleteConfirm(true);
+    deleteResetTimer.current = setTimeout(() => setDeleteConfirm(false), 4000);
+  }
+  async function doDeleteJob() {
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPost({
+        action: "deleteJob",
+        jobId: activeJobId
+      });
+      setDeleteConfirm(false);
+      setActiveJobId(null);
+      setView("list");
+      await refreshJobs();
+      setToast("ลบงานสำเร็จ");
+    } catch (err) {
+      console.error("[APP ERROR]", err);
+      setError("ลบงานไม่สำเร็จ ลองอีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  }
+  const activeJob = jobs.find(j => j.id === activeJobId);
+  const allGroupKeys = jobs.map(j => monthGroupKey(j.date));
+  const filterYearOptions = Array.from(new Set(allGroupKeys.filter(k => k !== "9999-99").map(k => k.split("-")[0]))).sort((a, b) => b.localeCompare(a));
+  const completedCount = jobs.filter(j => computeStatus(j) === "green").length;
+  const groups = {};
+  jobs
+    .filter(j => {
+      if (hideCompleted && computeStatus(j) === "green") return false;
+      if (!filterYear && !filterMonth) return true;
+      const key = monthGroupKey(j.date);
+      const parts = key.split("-");
+      if (filterYear && parts[0] !== filterYear) return false;
+      if (filterMonth && parts[1] !== filterMonth) return false;
+      return true;
+    })
+    .forEach(j => {
+      const key = monthGroupKey(j.date);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(j);
+    });
+  const sortedKeys = Object.keys(groups).sort();
+
+  // ===== ข้อมูลสำหรับมุมมองปฏิทิน =====
+  const jobsByDate = {};
+  jobs.forEach(j => {
+    if (!j.date) return;
+    if (!jobsByDate[j.date]) jobsByDate[j.date] = [];
+    jobsByDate[j.date].push(j);
+  });
+  const calDaysInMonth = new Date(calendarYear, calendarMonthIdx + 1, 0).getDate();
+  const calStartWeekday = new Date(calendarYear, calendarMonthIdx, 1).getDay();
+  const calCells = [];
+  for (let i = 0; i < calStartWeekday; i++) calCells.push(null);
+  for (let d = 1; d <= calDaysInMonth; d++) calCells.push(d);
+  const nowForCal = new Date();
+  const calTodayStr = `${nowForCal.getFullYear()}-${String(nowForCal.getMonth() + 1).padStart(2, "0")}-${String(nowForCal.getDate()).padStart(2, "0")}`;
+  const calMonthLabel = `${THAI_MONTHS[calendarMonthIdx]} ${calendarYear}`;
+  const selectedDayJobs = calendarSelectedDate ? (jobsByDate[calendarSelectedDate] || []) : [];
+
+  // การ์ดแสดงงาน 1 ใบ สำหรับรายการใต้ปฏิทิน (แยกจากการ์ดในหน้ารายการหลัก
+  // เพื่อไม่ต้องแก้โค้ดหน้ารายการหลักที่ทำงานปกติดีอยู่แล้ว)
+  function renderCalendarJobCard(job) {
+    const status = computeStatus(job);
+    const style = STATUS_STYLE[status];
+    return React.createElement("button", {
+      key: job.id,
+      onClick: () => openJob(job.id),
+      className: `w-full text-left border rounded-2xl p-3 shadow-sm hover:shadow-md transition-all ${style.card}`
+    }, React.createElement("div", {
+      className: "font-medium text-stone-900"
+    }, job.name), (job.venueName || job.representative) && React.createElement("div", {
+      className: "text-xs text-stone-500 mt-1 flex flex-col gap-0.5"
+    }, job.venueName && React.createElement("span", {
+      className: "flex items-center gap-1"
+    }, React.createElement(MapPin, {
+      className: "w-3 h-3"
+    }), job.venueName), job.representative && React.createElement("span", {
+      className: "flex items-center gap-1"
+    }, React.createElement(User, {
+      className: "w-3 h-3"
+    }), job.representative)));
+  }
+
+  const calendarNavHeaderEl = React.createElement("div", {
+    className: "flex items-center justify-between"
+  }, React.createElement("button", {
+    onClick: goPrevMonth,
+    className: "w-9 h-9 rounded-full flex items-center justify-center text-lg text-stone-600 hover:bg-stone-100"
+  }, "‹"), React.createElement("button", {
+    onClick: () => setShowMonthPicker(v => !v),
+    className: "font-semibold text-stone-900 px-3 py-1 rounded-lg hover:bg-stone-100"
+  }, calMonthLabel + " ▾"), React.createElement("button", {
+    onClick: goNextMonth,
+    className: "w-9 h-9 rounded-full flex items-center justify-center text-lg text-stone-600 hover:bg-stone-100"
+  }, "›"));
+
+  const calendarYearOptions = [];
+  for (let cy = calendarYear - 3; cy <= calendarYear + 3; cy++) calendarYearOptions.push(cy);
+  const calendarMonthPickerEl = showMonthPicker && React.createElement("div", {
+    className: "flex gap-2"
+  }, React.createElement("select", {
+    value: calendarMonthIdx,
+    onChange: e => {
+      setCalendarMonthIdx(Number(e.target.value));
+      setCalendarSelectedDate("");
+    },
+    className: "flex-1 border border-stone-300 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }, THAI_MONTHS.map((name, i) => React.createElement("option", {
+    key: i,
+    value: i
+  }, name))), React.createElement("select", {
+    value: calendarYear,
+    onChange: e => {
+      setCalendarYear(Number(e.target.value));
+      setCalendarSelectedDate("");
+    },
+    className: "flex-1 border border-stone-300 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }, calendarYearOptions.map(cy => React.createElement("option", {
+    key: cy,
+    value: cy
+  }, cy))));
+
+  const calendarWeekdaysEl = React.createElement("div", {
+    className: "grid grid-cols-7 gap-1 text-center text-xs text-stone-400 font-medium"
+  }, ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((d, i) => React.createElement("div", {
+    key: i
+  }, d)));
+
+  const calendarGridEl = React.createElement("div", {
+    className: "grid grid-cols-7 gap-1"
+  }, calCells.map((d, i) => {
+    if (d === null) return React.createElement("div", { key: "empty-" + i });
+    const dateStr = `${calendarYear}-${String(calendarMonthIdx + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dayJobs = jobsByDate[dateStr] || [];
+    const isToday = dateStr === calTodayStr;
+    const isSelected = dateStr === calendarSelectedDate;
+    const hasJobs = dayJobs.length > 0;
+    let cellClass = "aspect-square rounded-xl flex flex-col items-center justify-center text-sm relative transition-colors ";
+    if (isSelected) {
+      cellClass += "bg-[#074089] text-white";
+    } else if (hasJobs) {
+      cellClass += "bg-blue-100 text-[#074089] font-semibold";
+    } else {
+      cellClass += "text-stone-700 hover:bg-stone-100";
+    }
+    if (isToday) {
+      cellClass += " ring-2 ring-[#074089] ring-inset";
+    }
+    return React.createElement("button", {
+      key: dateStr,
+      onClick: () => setCalendarSelectedDate(isSelected ? "" : dateStr),
+      className: cellClass
+    }, d, hasJobs && React.createElement("span", {
+      className: `w-1.5 h-1.5 rounded-full mt-0.5 ${isSelected ? "bg-white" : "bg-[#074089]"}`
+    }));
+  }));
+
+  const calendarSelectedSectionEl = calendarSelectedDate && React.createElement("div", {
+    className: "space-y-2.5 pt-2"
+  }, React.createElement("div", {
+    className: "text-sm font-semibold text-stone-500"
+  }, `${fmtDate(calendarSelectedDate)} (${selectedDayJobs.length} งาน)`), selectedDayJobs.length === 0 ? React.createElement("div", {
+    className: "text-center text-stone-400 text-sm py-6"
+  }, "ไม่มีงานวันนี้") : React.createElement("div", {
+    className: "space-y-2.5"
+  }, selectedDayJobs.map(renderCalendarJobCard)));
+
+  sortedKeys.forEach(k => groups[k].sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999")));
+  if (loading) {
+    return React.createElement("div", {
+      className: "min-h-screen bg-stone-100 flex items-center justify-center"
+    }, React.createElement("div", {
+      className: "flex items-center gap-2 text-stone-500"
+    }, React.createElement(Loader2, {
+      className: "w-5 h-5 animate-spin"
+    }), React.createElement("span", null, "กำลังโหลดข้อมูล...")));
+  }
+  return React.createElement("div", {
+    className: "min-h-screen bg-stone-100 text-stone-900 font-sans"
+  }, React.createElement("div", {
+    className: "max-w-md mx-auto min-h-screen bg-stone-50 shadow-sm flex flex-col relative"
+  }, React.createElement("div", {
+    className: "sticky top-0 z-10 bg-gradient-to-r from-[#074089] to-[#0a5aa8] text-stone-50 px-4 py-3 flex items-center gap-3 shadow-sm"
+  }, (view === "jobDetail" || view === "editJob" || view === "calendar" || view === "log") ? React.createElement("button", {
+    onClick: view === "editJob" || view === "log" && logJobId && activeJob ? () => setView("jobDetail") : backToList,
+    className: "p-1 -ml-1 rounded hover:bg-white/10",
+    "aria-label": "กลับ"
+  }, React.createElement(ArrowLeft, {
+    className: "w-5 h-5"
+  })) : null, React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, view === "editJob" ? React.createElement("div", {
+    className: "text-sm font-semibold truncate"
+  }, "แก้ไขงาน") : view === "log" ? React.createElement("div", {
+    className: "text-sm font-semibold truncate"
+  }, "ประวัติการใช้งาน") : view === "calendar" ? React.createElement("div", {
+    className: "text-sm font-semibold truncate"
+  }, "ปฏิทินงาน") : view === "jobDetail" && activeJob ? React.createElement(React.Fragment, null, React.createElement("div", {
+    className: "text-sm font-semibold truncate"
+  }, activeJob.name), React.createElement("div", {
+    className: "text-xs text-stone-400 font-mono"
+  }, fmtDate(activeJob.date))) : React.createElement("div", {
+    className: "text-sm font-semibold tracking-tight"
+  }, "บันทึกภาพ ออกร้าน & Workshop")), saving && React.createElement(Loader2, {
+    className: "w-4 h-4 animate-spin text-stone-400"
+  }), view === "jobDetail" && activeJob && React.createElement("button", {
+    onClick: () => openLog(activeJob.id),
+    className: "p-1.5 rounded-md text-stone-300 hover:bg-white/10 shrink-0",
+    "aria-label": "ประวัติของงานนี้"
+  }, React.createElement(History, {
+    className: "w-4 h-4"
+  })), view === "jobDetail" && activeJob && React.createElement("button", {
+    onClick: openEditJob,
+    className: "p-1.5 rounded-md text-stone-300 hover:bg-white/10 shrink-0",
+    "aria-label": "แก้ไขงาน"
+  }, React.createElement(Pencil, {
+    className: "w-4 h-4"
+  })), view === "jobDetail" && activeJob && React.createElement("button", {
+    onClick: requestDeleteJob,
+    className: `flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors shrink-0 ${deleteConfirm ? "bg-red-600 text-white" : "text-stone-300 hover:bg-white/10"}`,
+    "aria-label": "ลบงานนี้"
+  }, React.createElement(Trash2, {
+    className: "w-4 h-4"
+  }), deleteConfirm && React.createElement("span", null, "กดอีกครั้งเพื่อยืนยัน")), view === "list" && React.createElement("button", {
+    onClick: () => openLog(null),
+    className: "p-1.5 rounded-md text-stone-200 hover:bg-white/10 shrink-0",
+    "aria-label": "ประวัติการใช้งาน"
+  }, React.createElement(History, {
+    className: "w-5 h-5"
+  })), view === "list" && React.createElement("button", {
+    onClick: () => setView("calendar"),
+    className: "p-1.5 rounded-md text-stone-200 hover:bg-white/10 shrink-0 text-lg leading-none",
+    "aria-label": "ปฏิทินงาน"
+  }, "📅"), view === "list" && React.createElement("button", {
+    onClick: () => setView("newJob"),
+    className: "flex items-center gap-1 bg-white text-[#074089] hover:bg-blue-50 rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow-sm shrink-0 transition-colors",
+    "aria-label": "เพิ่มงานใหม่"
+  }, React.createElement(Plus, {
+    className: "w-3.5 h-3.5"
+  }), "เพิ่มงานใหม่")), error && React.createElement("div", {
+    className: "flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 text-sm border-b border-red-100"
+  }, React.createElement(AlertCircle, {
+    className: "w-4 h-4 shrink-0"
+  }), error), view === "list" && React.createElement("div", {
+    className: "flex-1 p-4 space-y-5"
+  }, jobs.length === 0 && React.createElement("div", {
+    className: "text-center text-stone-400 text-sm py-16"
+  }, "ยังไม่มีงานที่บันทึกไว้", React.createElement("br", null), "กด \"+ เพิ่มงานใหม่\" ด้านบนขวาเพื่อเพิ่มงานแรก"), jobs.length > 0 && React.createElement("div", {
+    className: "flex gap-2"
+  }, React.createElement("select", {
+    value: filterYear,
+    onChange: e => setFilterYear(e.target.value),
+    className: "flex-1 border border-stone-300 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }, React.createElement("option", {
+    value: ""
+  }, "ทุกปี"), filterYearOptions.map(y => React.createElement("option", {
+    key: y,
+    value: y
+  }, y))), React.createElement("select", {
+    value: filterMonth,
+    onChange: e => setFilterMonth(e.target.value),
+    className: "flex-1 border border-stone-300 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }, React.createElement("option", {
+    value: ""
+  }, "ทุกเดือน"), THAI_MONTHS.map((name, i) => React.createElement("option", {
+    key: i,
+    value: String(i + 1).padStart(2, "0")
+  }, name)))), jobs.length > 0 && completedCount > 0 && React.createElement("label", {
+    className: "flex items-center gap-2 text-sm text-stone-600 select-none cursor-pointer"
+  }, React.createElement("input", {
+    type: "checkbox",
+    checked: hideCompleted,
+    onChange: e => setHideCompleted(e.target.checked),
+    className: "w-4 h-4 rounded border-stone-300 text-[#074089] focus:ring-[#074089]/50"
+  }), `ซ่อนงานที่เสร็จสมบูรณ์แล้ว (${completedCount})`), jobs.length > 0 && sortedKeys.length === 0 && React.createElement("div", {
+    className: "text-center text-stone-400 text-sm py-10"
+  }, "ไม่มีงานตรงกับตัวกรองที่เลือก"), sortedKeys.map(key => React.createElement("div", {
+    key: key
+  }, React.createElement("div", {
+    className: "text-sm font-semibold text-stone-500 mb-2 pb-1 border-b border-stone-200"
+  }, monthGroupLabel(groups[key][0].date)), React.createElement("div", {
+    className: "space-y-2.5"
+  }, groups[key].map(job => {
+    const status = computeStatus(job);
+    const style = STATUS_STYLE[status];
+    const missing = missingStages(job);
+    const countdown = installCountdown(job);
+    const counts = Object.keys(STAGES).map(k => ({
+      key: k,
+      n: job.categories[k].entries.length
+    }));
+    return React.createElement("button", {
+      key: job.id,
+      onClick: () => openJob(job.id),
+      className: `w-full text-left border rounded-2xl p-3.5 shadow-sm hover:shadow-md transition-all flex gap-3 ${style.card}`
+    }, job.coverPhoto && React.createElement("img", {
+      src: job.coverPhoto,
+      alt: "",
+      className: "w-16 h-16 rounded-xl object-cover shrink-0 border border-black/5 shadow-sm"
+    }), React.createElement("div", {
+      className: "flex-1 min-w-0"
+    }, React.createElement("div", {
+      className: "flex items-start justify-between gap-2"
+    }, React.createElement("div", {
+      className: "font-medium text-stone-900"
+    }, job.name), style.label && React.createElement("span", {
+      className: `text-[11px] px-2.5 py-1 rounded-full shrink-0 font-medium ${style.labelClass} ${style.labelAnim}`
+    }, status === "green" ? "✨ " : "", style.label)), React.createElement("div", {
+      className: "text-xs font-mono text-stone-500 mt-0.5"
+    }, fmtDate(job.date)), React.createElement("div", {
+      className: "flex items-start justify-between gap-3 mt-1"
+    }, React.createElement("div", {
+      className: "flex-1 min-w-0"
+    }, (job.venueName || job.representative || job.jobType || hasSubWorkers(job)) && React.createElement("div", {
+      className: "text-xs text-stone-500 flex flex-col gap-0.5"
+    }, job.jobType && React.createElement("span", null, job.jobType), job.venueName && React.createElement("span", {
+      className: "flex items-center gap-1"
+    }, React.createElement(MapPin, {
+      className: "w-3 h-3"
+    }), job.venueName, job.roomDetail ? ` · ${job.roomDetail}` : ""), job.representative && React.createElement("span", {
+      className: "flex items-center gap-1"
+    }, React.createElement(User, {
+      className: "w-3 h-3"
+    }), job.representative), hasSubWorkers(job) && React.createElement("span", {
+      className: "flex items-start gap-1"
+    }, React.createElement(User, {
+      className: "w-3 h-3 mt-0.5 shrink-0"
+    }), React.createElement("div", {
+      className: "space-y-0.5"
+    }, formatSubWorkersLines(job.subWorkers).map((line, i) => React.createElement("div", {
+      key: i
+    }, (i === 0 ? "ลูกงาน: " : "") + line))))), React.createElement("div", {
+      className: "flex gap-1.5 mt-2 text-xs text-stone-500"
+    }, counts.map(({
+      key: k,
+      n
+    }) => {
+      const Ic = STAGES[k].icon;
+      return React.createElement("span", {
+        key: k,
+        className: `flex items-center gap-1 px-2 py-1 rounded-full font-medium ${ACCENT_SOFT_BG[STAGES[k].accent]}`
+      }, React.createElement(Ic, {
+        className: "w-3.5 h-3.5"
+      }), n);
+    }))), (countdown || missing.length > 0) && React.createElement("div", {
+      className: "flex flex-col items-end gap-1.5 shrink-0 text-right"
+    }, countdown && React.createElement("div", {
+      className: "flex items-center gap-1 text-sm font-semibold text-white bg-[#074089] rounded-full px-3 py-1.5 shadow-sm"
+    }, React.createElement(Timer, {
+      className: "w-4 h-4"
+    }), countdown.days, " วัน ", countdown.hours, " ชม."), missing.length > 0 && React.createElement("div", {
+      className: "text-xs text-stone-500"
+    }, React.createElement("div", {
+      className: "font-medium text-stone-600"
+    }, "ข้อมูลที่ยังไม่ครบ"), missing.map(k => React.createElement("div", {
+      key: k
+    }, "- ", STAGES[k].photoLabel)))))));
+  })))), React.createElement("div", {
+    className: "flex items-center gap-4 justify-center text-[11px] text-stone-400 pt-1 flex-wrap"
+  }, React.createElement("span", {
+    className: "flex items-center gap-1"
+  }, React.createElement("span", {
+    className: "w-2.5 h-2.5 rounded-full bg-white border border-stone-300"
+  }), "ยังไม่ถึงวันงาน"), React.createElement("span", {
+    className: "flex items-center gap-1"
+  }, React.createElement("span", {
+    className: "w-2.5 h-2.5 rounded-full bg-red-400"
+  }), "ใกล้ถึงวันงาน"), React.createElement("span", {
+    className: "flex items-center gap-1"
+  }, React.createElement("span", {
+    className: "w-2.5 h-2.5 rounded-full bg-orange-400"
+  }), "ถึงวันงานแล้ว"), React.createElement("span", {
+    className: "flex items-center gap-1"
+  }, React.createElement("span", {
+    className: "w-2.5 h-2.5 rounded-full bg-emerald-500"
+  }), "เสร็จสมบูรณ์")), React.createElement("p", {
+    className: "text-xs text-stone-400 text-center"
+  }, "ข้อมูลนี้ใช้ร่วมกันได้ทุกคนที่เปิดหน้านี้"), React.createElement("button", {
+    onClick: () => setShowActorPicker(true),
+    className: "block mx-auto text-xs text-[#074089] underline underline-offset-2"
+  }, actor ? `ใช้งานในชื่อ: ${actor} (เปลี่ยน)` : "เลือกชื่อผู้ใช้งาน")), view === "log" && React.createElement(ActivityLogView, {
+    logs: logJobId ? logs.filter(l => l.jobId === logJobId) : logs,
+    loading: logsLoading,
+    jobName: logJobId ? (jobs.find(j => j.id === logJobId) || {}).name || "งานที่ถูกลบไปแล้ว" : "",
+    onRefresh: loadLogs,
+    onShowAll: () => setLogJobId(null),
+    onPhoto: setViewerPhoto
+  }), view === "calendar" && React.createElement("div", {
+    className: "flex-1 p-4 space-y-4"
+  }, calendarNavHeaderEl, calendarMonthPickerEl, calendarWeekdaysEl, calendarGridEl, calendarSelectedSectionEl), view === "newJob" && React.createElement("div", {
+    className: "flex-1 p-4 space-y-5 pb-8"
+  }, React.createElement("div", {
+    className: "space-y-3"
+  }, React.createElement("div", {
+    className: "text-sm font-semibold text-stone-500"
+  }, "รายละเอียดงาน"), React.createElement("div", null, React.createElement("label", {
+    className: "block text-sm font-medium text-stone-700 mb-1"
+  }, "รูปหน้างาน (ไม่บังคับ)"), React.createElement("input", {
+    ref: newJobCoverInputRef,
+    type: "file",
+    accept: "image/*",
+    onChange: handleNewJobCoverChosen,
+    className: "hidden"
+  }), form.coverPhoto ? React.createElement("div", {
+    className: "relative w-20 h-20"
+  }, React.createElement("img", {
+    src: form.coverPhoto,
+    alt: "",
+    className: "w-20 h-20 rounded-md object-cover border border-stone-200"
+  }), React.createElement("button", {
+    onClick: () => setF("coverPhoto", null),
+    className: "absolute -top-1.5 -right-1.5 bg-[#074089] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs",
+    "aria-label": "ลบรูป"
+  }, "×")) : React.createElement("button", {
+    onClick: () => newJobCoverInputRef.current?.click(),
+    className: "w-20 h-20 border-2 border-dashed border-stone-300 rounded-md flex flex-col items-center justify-center gap-1 text-stone-400 hover:border-stone-400 hover:text-stone-500"
+  }, React.createElement(Camera, {
+    className: "w-5 h-5"
+  }), React.createElement("span", {
+    className: "text-[10px]"
+  }, "เพิ่มรูป"))), React.createElement(LabeledInput, {
+    label: "ชื่องาน",
+    autoFocus: true,
+    value: form.name,
+    onChange: e => setF("name", e.target.value),
+    placeholder: "เช่น Uro camp 2026"
+  }), React.createElement(LabeledSelectWithOther, {
+    label: "ชื่อผู้แทน",
+    value: form.representative,
+    onChange: v => setF("representative", v),
+    options: REPRESENTATIVES,
+    placeholder: "เลือกชื่อผู้แทน"
+  }), React.createElement(SubWorkersByDateEditor, {
+    label: "ลูกงาน (แยกตามวัน)",
+    values: form.subWorkers,
+    onChange: v => setF("subWorkers", v),
+    groups: SUB_WORKER_GROUPS,
+    placeholder: "เลือกลูกงาน (เลือกได้หลายคน)",
+    defaultDate: form.installDate || form.date || ""
+  }), React.createElement(LabeledSelectWithOther, {
+    label: "ประเภทของงาน",
+    value: form.jobType,
+    onChange: v => setF("jobType", v),
+    options: JOB_TYPES,
+    placeholder: "เลือกประเภทงาน"
+  })), React.createElement("div", {
+    className: "space-y-3"
+  }, React.createElement("div", {
+    className: "text-sm font-semibold text-stone-500"
+  }, "สถานที่"), React.createElement(LabeledInput, {
+    label: "ชื่อสถานที่",
+    value: form.venueName,
+    onChange: e => setF("venueName", e.target.value)
+  }), React.createElement(LabeledInput, {
+    label: "ชื่อตึก / ชั้น / ห้อง",
+    value: form.roomDetail,
+    onChange: e => setF("roomDetail", e.target.value),
+    placeholder: "เช่น ตึก A ชั้น 3 ห้อง Ballroom"
+  }), React.createElement(LabeledInput, {
+    label: "ลิงก์ Google Maps (ไม่บังคับ)",
+    type: "url",
+    value: form.mapUrl,
+    onChange: e => setF("mapUrl", e.target.value),
+    placeholder: "วางลิงก์จาก Google Maps ที่นี่"
+  })), React.createElement("div", {
+    className: "space-y-3"
+  }, React.createElement("div", {
+    className: "text-sm font-semibold text-stone-500"
+  }, "กำหนดการ"), React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, React.createElement(LabeledInput, {
+    label: "ติดตั้งวันที่",
+    type: "date",
+    value: form.installDate,
+    onChange: e => setF("installDate", e.target.value)
+  }), React.createElement(LabeledTimeSelect, {
+    label: "เวลาเข้าติดตั้ง",
+    value: form.installTime,
+    onChange: v => setF("installTime", v)
+  })), React.createElement(LabeledInput, {
+    label: "วันที่จัดงาน",
+    type: "date",
+    value: form.date,
+    onChange: e => setF("date", e.target.value)
+  }), React.createElement(LabeledInput, {
+    label: "ใช้งานถึงวันที่",
+    type: "date",
+    value: form.useUntilDate,
+    onChange: e => setF("useUntilDate", e.target.value)
+  }), React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, React.createElement(LabeledInput, {
+    label: "ถอนการติดตั้งวันที่",
+    type: "date",
+    value: form.uninstallDate,
+    onChange: e => setF("uninstallDate", e.target.value)
+  }), React.createElement(LabeledTimeSelect, {
+    label: "เวลาถอนการติดตั้ง (ไม่บังคับ)",
+    value: form.uninstallTime,
+    onChange: v => setF("uninstallTime", v)
+  }))), React.createElement("div", {
+    className: "flex gap-2 pt-1"
+  }, React.createElement("button", {
+    onClick: () => {
+      setForm(EMPTY_FORM);
+      setView("list");
+    },
+    className: "flex-1 border border-stone-300 rounded-md py-2 text-sm text-stone-600"
+  }, "ยกเลิก"), React.createElement("button", {
+    onClick: createJob,
+    disabled: !form.name.trim(),
+    className: "flex-1 bg-[#074089] text-stone-50 rounded-md py-2 text-sm font-medium disabled:opacity-40"
+  }, "สร้างงาน"))), view === "editJob" && React.createElement("div", {
+    className: "flex-1 p-4 space-y-5 pb-8"
+  }, React.createElement("div", {
+    className: "space-y-3"
+  }, React.createElement("div", {
+    className: "text-sm font-semibold text-stone-500"
+  }, "รายละเอียดงาน"), React.createElement(LabeledInput, {
+    label: "ชื่องาน",
+    autoFocus: true,
+    value: editForm.name,
+    onChange: e => setEF("name", e.target.value),
+    placeholder: "เช่น Uro camp 2026"
+  }), React.createElement(LabeledSelectWithOther, {
+    label: "ชื่อผู้แทน",
+    value: editForm.representative,
+    onChange: v => setEF("representative", v),
+    options: REPRESENTATIVES,
+    placeholder: "เลือกชื่อผู้แทน"
+  }), React.createElement(SubWorkersByDateEditor, {
+    label: "ลูกงาน (แยกตามวัน)",
+    values: editForm.subWorkers,
+    onChange: v => setEF("subWorkers", v),
+    groups: SUB_WORKER_GROUPS,
+    placeholder: "เลือกลูกงาน (เลือกได้หลายคน)",
+    defaultDate: editForm.installDate || editForm.date || ""
+  }), React.createElement(LabeledSelectWithOther, {
+    label: "ประเภทของงาน",
+    value: editForm.jobType,
+    onChange: v => setEF("jobType", v),
+    options: JOB_TYPES,
+    placeholder: "เลือกประเภทงาน"
+  })), React.createElement("div", {
+    className: "space-y-3"
+  }, React.createElement("div", {
+    className: "text-sm font-semibold text-stone-500"
+  }, "สถานที่"), React.createElement(LabeledInput, {
+    label: "ชื่อสถานที่",
+    value: editForm.venueName,
+    onChange: e => setEF("venueName", e.target.value)
+  }), React.createElement(LabeledInput, {
+    label: "ชื่อตึก / ชั้น / ห้อง",
+    value: editForm.roomDetail,
+    onChange: e => setEF("roomDetail", e.target.value),
+    placeholder: "เช่น ตึก A ชั้น 3 ห้อง Ballroom"
+  }), React.createElement(LabeledInput, {
+    label: "ลิงก์ Google Maps (ไม่บังคับ)",
+    type: "url",
+    value: editForm.mapUrl,
+    onChange: e => setEF("mapUrl", e.target.value),
+    placeholder: "วางลิงก์จาก Google Maps ที่นี่"
+  })), React.createElement("div", {
+    className: "space-y-3"
+  }, React.createElement("div", {
+    className: "text-sm font-semibold text-stone-500"
+  }, "กำหนดการ"), React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, React.createElement(LabeledInput, {
+    label: "ติดตั้งวันที่",
+    type: "date",
+    value: editForm.installDate,
+    onChange: e => setEF("installDate", e.target.value)
+  }), React.createElement(LabeledTimeSelect, {
+    label: "เวลาเข้าติดตั้ง",
+    value: editForm.installTime,
+    onChange: v => setEF("installTime", v)
+  })), React.createElement(LabeledInput, {
+    label: "วันที่จัดงาน",
+    type: "date",
+    value: editForm.date,
+    onChange: e => setEF("date", e.target.value)
+  }), React.createElement(LabeledInput, {
+    label: "ใช้งานถึงวันที่",
+    type: "date",
+    value: editForm.useUntilDate,
+    onChange: e => setEF("useUntilDate", e.target.value)
+  }), React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, React.createElement(LabeledInput, {
+    label: "ถอนการติดตั้งวันที่",
+    type: "date",
+    value: editForm.uninstallDate,
+    onChange: e => setEF("uninstallDate", e.target.value)
+  }), React.createElement(LabeledTimeSelect, {
+    label: "เวลาถอนการติดตั้ง (ไม่บังคับ)",
+    value: editForm.uninstallTime,
+    onChange: v => setEF("uninstallTime", v)
+  }))), React.createElement("div", {
+    className: "flex gap-2 pt-1"
+  }, React.createElement("button", {
+    onClick: () => setView("jobDetail"),
+    className: "flex-1 border border-stone-300 rounded-md py-2 text-sm text-stone-600"
+  }, "ยกเลิก"), React.createElement("button", {
+    onClick: saveEditJob,
+    disabled: !editForm.name.trim(),
+    className: "flex-1 bg-[#074089] text-stone-50 rounded-md py-2 text-sm font-medium disabled:opacity-40"
+  }, "บันทึกการแก้ไข"))), view === "jobDetail" && activeJob && React.createElement("div", {
+    className: "flex-1 flex flex-col"
+  }, (activeJob.venueName || activeJob.representative || hasSubWorkers(activeJob) || activeJob.jobType || activeJob.categories.install.installDate || activeJob.coverPhoto) && React.createElement("div", {
+    className: "px-4 py-2.5 bg-stone-100 border-b border-stone-200 text-xs text-stone-600 flex gap-3"
+  }, React.createElement("input", {
+    ref: coverEditInputRef,
+    type: "file",
+    accept: "image/*",
+    onChange: handleCoverEditChosen,
+    className: "hidden"
+  }), React.createElement("button", {
+    onClick: () => coverEditInputRef.current?.click(),
+    className: "relative w-16 h-16 shrink-0 rounded-md overflow-hidden border border-stone-300 group",
+    "aria-label": "แก้ไขรูปหน้างาน"
+  }, activeJob.coverPhoto ? React.createElement("img", {
+    src: activeJob.coverPhoto,
+    alt: "",
+    className: "w-full h-full object-cover"
+  }) : React.createElement("div", {
+    className: "w-full h-full bg-stone-200 flex items-center justify-center text-stone-400"
+  }, React.createElement(Camera, {
+    className: "w-5 h-5"
+  })), React.createElement("div", {
+    className: "absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors"
+  }, React.createElement(Camera, {
+    className: "w-4 h-4 text-white opacity-0 group-hover:opacity-100"
+  }))), React.createElement("div", {
+    className: "space-y-0.5 min-w-0"
+  }, activeJob.jobType && React.createElement("div", null, "ประเภทงาน: ", activeJob.jobType), activeJob.venueName && React.createElement(activeJob.mapUrl ? "a" : "div", {
+    className: `flex items-center gap-1 ${activeJob.mapUrl ? "text-blue-700 underline underline-offset-2" : ""}`,
+    ...(activeJob.mapUrl ? {
+      href: activeJob.mapUrl,
+      target: "_blank",
+      rel: "noopener noreferrer"
+    } : {})
+  }, React.createElement(MapPin, {
+    className: "w-3 h-3"
+  }), activeJob.venueName, activeJob.roomDetail ? ` · ${activeJob.roomDetail}` : ""), activeJob.representative && React.createElement("div", {
+    className: "flex items-center gap-1"
+  }, React.createElement(User, {
+    className: "w-3 h-3"
+  }), activeJob.representative), hasSubWorkers(activeJob) && React.createElement("div", {
+    className: "flex items-start gap-1"
+  }, React.createElement(User, {
+    className: "w-3 h-3 mt-0.5 shrink-0"
+  }), React.createElement("div", {
+    className: "space-y-0.5"
+  }, formatSubWorkersLines(activeJob.subWorkers).map((line, i) => React.createElement("div", {
+    key: i
+  }, (i === 0 ? "ลูกงาน: " : "") + line)))), activeJob.categories.install.installDate && React.createElement("div", {
+    className: "font-mono space-y-0.5 pt-0.5"
+  }, React.createElement("div", null, "ติดตั้ง: ", fmtDate(activeJob.categories.install.installDate), activeJob.categories.install.installTime ? ` เวลา ${activeJob.categories.install.installTime}` : ""), activeJob.categories.install.useUntilDate && React.createElement("div", null, "ใช้งานถึง: ", fmtDate(activeJob.categories.install.useUntilDate)), activeJob.categories.install.uninstallDate && React.createElement("div", null, "ถอนการติดตั้ง: ", fmtDate(activeJob.categories.install.uninstallDate), activeJob.categories.install.uninstallTime ? ` เวลา ${activeJob.categories.install.uninstallTime}` : "")))), React.createElement("div", {
+    className: "px-4 py-3 bg-white border-b border-stone-200 space-y-2"
+  }, React.createElement("div", {
+    className: "text-xs font-semibold text-stone-500 flex items-center gap-1.5"
+  }, React.createElement(ClipboardList, {
+    className: "w-3.5 h-3.5"
+  }), "ของที่ต้องจัดเตรียม"), React.createElement("div", {
+    className: "space-y-1.5"
+  }, React.createElement("textarea", {
+    value: pendingPrepNote,
+    onChange: e => setPendingPrepNote(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        addPrepItem();
+      }
+    },
+    placeholder: "พิมพ์รายการที่ต้องเตรียม (ขึ้นบรรทัดใหม่ได้) แล้วกดเพิ่ม",
+    rows: 3,
+    className: "w-full border border-stone-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#074089]/50 resize-y"
+  }), React.createElement("button", {
+    onClick: addPrepItem,
+    disabled: !pendingPrepNote.trim(),
+    className: "w-full bg-[#074089] text-white rounded-md py-2 text-sm font-medium disabled:opacity-40"
+  }, "เพิ่ม")), activeJob.prepItems && activeJob.prepItems.length > 0 && React.createElement("div", {
+    className: "space-y-1.5 pt-1"
+  }, activeJob.prepItems.map(item => React.createElement("div", {
+    key: item.id,
+    className: "flex items-start gap-2 bg-stone-50 border border-stone-200 rounded-md px-3 py-2"
+  }, React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, React.createElement("div", {
+    className: "text-sm text-stone-700 whitespace-pre-wrap"
+  }, item.note), React.createElement("div", {
+    className: "text-[11px] font-mono text-stone-400 mt-0.5"
+  }, fmtTimestamp(item.timestamp))), React.createElement("button", {
+    onClick: () => setConfirmAction({
+      title: "ลบรายการนี้เลยไหม?",
+      message: "ลบแล้วข้อมูลจะหายไปทันที ไม่สามารถกู้คืนได้",
+      onConfirm: () => deletePrepItem(item.id)
+    }),
+    className: "text-stone-300 hover:text-red-500 p-0.5 shrink-0",
+    "aria-label": "ลบรายการนี้"
+  }, React.createElement(Trash2, {
+    className: "w-3.5 h-3.5"
+  })))))), React.createElement("div", {
+    className: "flex border-b border-stone-200"
+  }, Object.entries(STAGES).map(([key, stage]) => {
+    const isActive = activeStage === key;
+    const accent = ACCENT[stage.accent];
+    const Ic = stage.icon;
+    return React.createElement("button", {
+      key: key,
+      onClick: () => setActiveStage(key),
+      className: `flex-1 flex flex-col items-center gap-1.5 py-3 text-xs font-medium border-b-2 transition-colors ${isActive ? `${accent.border} ${accent.softText}` : "border-transparent text-stone-400"}`
+    }, React.createElement("span", {
+      className: `flex items-center justify-center w-7 h-7 rounded-full transition-colors ${isActive ? ACCENT_SOFT_BG[stage.accent] : ""}`
+    }, React.createElement(Ic, {
+      className: "w-4 h-4"
+    })), stage.label);
+  })), React.createElement("div", {
+    className: "flex-1 p-4 space-y-4"
+  }, React.createElement("div", {
+    className: "bg-white border border-stone-200 rounded-2xl p-3 space-y-2 shadow-sm"
+  }, React.createElement("input", {
+    value: pendingNote,
+    onChange: e => setPendingNote(e.target.value),
+    placeholder: "รายละเอียดสั้น ๆ (ไม่บังคับ)",
+    className: "w-full border border-stone-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#074089]/50"
+  }), React.createElement("input", {
+    ref: fileInputRef,
+    type: "file",
+    accept: "image/*",
+    multiple: true,
+    onChange: handlePhotoChosen,
+    className: "hidden"
+  }), React.createElement("button", {
+    onClick: () => fileInputRef.current?.click(),
+    className: `w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium text-white shadow-sm ${ACCENT[STAGES[activeStage].accent].dot}`
+  }, React.createElement(Camera, {
+    className: "w-4 h-4"
+  }), "ถ่ายภาพ / เลือกรูปจากเครื่อง (เลือกได้หลายรูป)")), React.createElement("div", {
+    className: "space-y-2"
+  }, activeJob.categories[activeStage].entries.length === 0 && React.createElement("div", {
+    className: "text-center text-stone-400 text-sm py-10 flex flex-col items-center gap-2"
+  }, React.createElement(ImageOff, {
+    className: "w-6 h-6"
+  }), "ยังไม่มีภาพในหมวดนี้"), activeJob.categories[activeStage].entries.map(entry => React.createElement("div", {
+    key: entry.id,
+    className: "bg-white border border-stone-200 rounded-2xl p-2.5 flex gap-3 shadow-sm"
+  }, React.createElement("button", {
+    onClick: () => setViewerPhoto(entry.photo),
+    className: "w-16 h-16 shrink-0 rounded-xl overflow-hidden",
+    "aria-label": "ดูรูปเต็มจอ"
+  }, React.createElement("img", {
+    src: entry.photo,
+    alt: "",
+    className: "w-full h-full object-cover"
+  })), React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, React.createElement("div", {
+    className: "text-xs font-mono text-stone-400"
+  }, fmtTimestamp(entry.timestamp)), entry.note && React.createElement("div", {
+    className: "text-sm text-stone-700 mt-0.5"
+  }, entry.note)), React.createElement("button", {
+    onClick: () => setConfirmAction({
+      title: "ลบรูปนี้เลยไหม?",
+      message: "ลบแล้วรูปจะหายไปทันที ไม่สามารถกู้คืนได้",
+      onConfirm: () => deleteEntry(entry.id)
+    }),
+    className: "text-stone-300 hover:text-red-500 p-1 h-fit",
+    "aria-label": "ลบ"
+  }, React.createElement(Trash2, {
+    className: "w-4 h-4"
+  }))))))), viewerPhoto && React.createElement("div", {
+    className: "fixed inset-0 z-40 bg-black/90 flex items-center justify-center p-4",
+    onClick: () => setViewerPhoto(null)
+  }, React.createElement("button", {
+    onClick: () => setViewerPhoto(null),
+    className: "absolute top-4 right-4 text-white/80 hover:text-white text-3xl leading-none w-9 h-9 flex items-center justify-center",
+    "aria-label": "ปิด"
+  }, "×"), React.createElement("img", {
+    src: viewerPhoto,
+    alt: "",
+    className: "max-w-full max-h-full object-contain rounded-md",
+    onClick: e => e.stopPropagation()
+  })), toast && React.createElement("div", {
+    className: "absolute left-1/2 -translate-x-1/2 bottom-5 bg-[#074089] text-white text-sm px-4 py-2.5 rounded-full shadow-lg flex items-center gap-2 z-20"
+  }, React.createElement(CheckCircle2, {
+    className: "w-4 h-4 text-emerald-400"
+  }), toast), showActorPicker && React.createElement(ActorPicker, {
+    current: actor,
+    onChoose: chooseActor,
+    onClose: actor ? () => setShowActorPicker(false) : null
+  }), confirmAction && React.createElement("div", {
+    className: "fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4",
+    onClick: () => setConfirmAction(null)
+  }, React.createElement("div", {
+    className: "bg-white rounded-2xl shadow-xl max-w-xs w-full p-5 text-center",
+    onClick: e => e.stopPropagation()
+  }, React.createElement("div", {
+    className: "text-4xl mb-2"
+  }, "⚠️"), React.createElement("div", {
+    className: "font-semibold text-stone-900 mb-1"
+  }, confirmAction.title), React.createElement("div", {
+    className: "text-sm text-stone-500 mb-5"
+  }, confirmAction.message), React.createElement("div", {
+    className: "flex gap-2"
+  }, React.createElement("button", {
+    onClick: () => setConfirmAction(null),
+    className: "flex-1 border border-stone-300 rounded-xl py-2.5 text-sm font-medium text-stone-600"
+  }, "ยกเลิก"), React.createElement("button", {
+    onClick: () => {
+      confirmAction.onConfirm();
+      setConfirmAction(null);
+    },
+    className: "flex-1 bg-red-600 text-white rounded-xl py-2.5 text-sm font-medium"
+  }, "ลบเลย"))))));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(SitePhotoLog, null));
+</script>
+</body>
+</html>
