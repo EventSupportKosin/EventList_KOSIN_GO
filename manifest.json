@@ -1,6 +1,6 @@
 {
   "name": "บันทึกภาพ ออกร้าน & Workshop",
-  "short_name": "Event Photo",
+  "short_name": "Event list",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#074089",
