@@ -1,0 +1,16 @@
+{
+  "name": "บันทึกภาพ ออกร้าน & Workshop",
+  "short_name": "Event Photo",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#074089",
+  "theme_color": "#074089",
+  "icons": [
+    {
+      "src": "./icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
