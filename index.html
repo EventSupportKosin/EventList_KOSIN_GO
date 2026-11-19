@@ -60,6 +60,7 @@
     .no-print { display: none !important; }
     #job-pdf-print-area { display: block !important; }
     .pdf-avoid-break { break-inside: avoid; page-break-inside: avoid; }
+    .pdf-page-break { break-before: page; page-break-before: always; }
   }
 </style>
 </head>
@@ -1152,10 +1153,14 @@ function JobPdfReport({ job }) {
     className: "text-xs text-stone-400"
   }, "— ไม่มีรายการ —")), stageSections.map(sec => React.createElement("div", {
     key: sec.key,
-    className: "space-y-2 pt-1"
+    className: "space-y-3 pt-1 pdf-page-break"
   }, React.createElement("div", {
-    className: "text-xs font-bold text-[#074089] border-b border-stone-300 pb-1 pdf-avoid-break"
-  }, `${sec.title} (${sec.entries.length} ภาพ)`), sec.entries.length > 0 ? React.createElement("div", {
+    className: "flex items-center justify-between gap-2 border-b-2 border-[#074089] pb-1.5 pdf-avoid-break"
+  }, React.createElement("span", {
+    className: "text-sm font-bold text-[#074089]"
+  }, `${sec.title} (${sec.entries.length} ภาพ)`), React.createElement("span", {
+    className: "text-xs text-stone-500 truncate"
+  }, job.name || "")), sec.entries.length > 0 ? React.createElement("div", {
     className: "grid grid-cols-2 gap-3"
   }, sec.entries.map((entry, idx) => React.createElement("div", {
     key: entry.id || idx,
