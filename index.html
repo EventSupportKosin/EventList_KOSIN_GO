@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <base target="_top" />
 <title>บันทึกภาพ ออกร้าน & Workshop</title>
+<link rel="icon" type="image/png" href="./icon.png" />
+<link rel="apple-touch-icon" sizes="512x512" href="./icon.png" />
+<link rel="manifest" href="./manifest.json" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Event Photo" />
+<meta name="theme-color" content="#074089" />
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -258,7 +265,11 @@ async function gsRun(fnName, ...args) {
   if (!res.ok) {
     throw new Error("HTTP " + res.status);
   }
-  const json = await res.json();
+  const rawText = await res.text();
+  if (rawText.trim().startsWith("<")) {
+    throw new Error("Apps Script ยังส่งกลับเป็น HTML (โปรดเช็ค Deploy > New version และตั้ง Who has access: Anyone)");
+  }
+  const json = JSON.parse(rawText);
   if (!json || json.ok === false) {
     throw new Error((json && json.error) || "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ");
   }
@@ -1093,7 +1104,7 @@ function SitePhotoLog() {
       setError(null);
     } catch (err) {
       console.error("[APP ERROR]", err);
-      setError("โหลดข้อมูลจาก Google Sheets ไม่สำเร็จ ลองอีกครั้ง");
+      setError("โหลดข้อมูลจาก Google Sheets ไม่สำเร็จ: " + (err && err.message ? err.message : "ลองอีกครั้ง"));
     }
   }, []);
   useEffect(() => {
@@ -1104,7 +1115,7 @@ function SitePhotoLog() {
         if (!cancelled) setJobs(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("[APP ERROR]", err);
-        if (!cancelled) setError("โหลดข้อมูลจาก Google Sheets ไม่สำเร็จ ลองรีเฟรชหน้า");
+        if (!cancelled) setError("โหลดข้อมูลจาก Google Sheets ไม่สำเร็จ: " + (err && err.message ? err.message : "ลองรีเฟรชหน้า"));
       } finally {
         if (!cancelled) setLoading(false);
       }
